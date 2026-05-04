@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beyond Mist Nets — Aves Habituadas Neotropicales</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--g1:#0d2818;--g2:#1b4332;--g3:#2d6a4f;--g4:#52b788;--g5:#95d5b2;--g6:#d8f3dc;
+  --gold:#e9c46a;--rust:#e76f51;--text:#0d2818;--muted:#52765f;--shadow:0 4px 24px rgba(13,40,24,.15)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Instrument Sans',sans-serif;background:var(--g1);color:#fff;overflow:hidden}
+
+header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(13,40,24,.97);
+  backdrop-filter:blur(12px);border-bottom:1px solid rgba(82,183,136,.2);
+  display:flex;align-items:center;justify-content:space-between;padding:12px 28px;height:64px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{font-size:1.5rem}
+.logo h1{font-family:'DM Serif Display',serif;font-size:1.1rem;color:#fff;line-height:1.1}
+.logo p{font-size:.65rem;color:var(--g5);font-family:'DM Mono',monospace;margin-top:1px}
+.hstats{display:flex;gap:12px;align-items:center}
+.hstat{text-align:center;background:rgba(82,183,136,.1);border:1px solid rgba(82,183,136,.2);border-radius:8px;padding:4px 12px}
+.hstat .n{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--g4);line-height:1}
+.hstat .l{font-size:.6rem;color:var(--g5);text-transform:uppercase;letter-spacing:.08em}
+.dbtn{display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--g5);font-family:'DM Mono',monospace;
+  background:rgba(255,255,255,.05);border:1px dashed rgba(82,183,136,.3);border-radius:8px;
+  padding:5px 11px;cursor:pointer;transition:all .2s}
+.dbtn:hover{background:rgba(82,183,136,.1)}
+.ddot{width:6px;height:6px;border-radius:50%;background:var(--g4);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+#map{position:fixed;top:64px;left:0;right:320px;bottom:0;z-index:1}
+
+.side{position:fixed;top:64px;right:0;bottom:0;width:320px;z-index:500;
+  background:rgba(13,40,24,.97);backdrop-filter:blur(12px);
+  border-left:1px solid rgba(82,183,136,.15);display:flex;flex-direction:column;overflow:hidden}
+.s-head{padding:14px 16px 10px;border-bottom:1px solid rgba(82,183,136,.12)}
+.s-head h2{font-family:'DM Serif Display',serif;font-size:.98rem;color:#fff}
+.s-head p{font-size:.7rem;color:var(--g5);margin-top:2px}
+.s-prog{padding:12px 16px;border-bottom:1px solid rgba(82,183,136,.1)}
+.prog-row{display:flex;justify-content:space-between;font-size:.72rem;color:var(--g5);margin-bottom:4px}
+.pbar{height:5px;background:rgba(82,183,136,.15);border-radius:999px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--g4),var(--g3));border-radius:999px;transition:width .5s}
+.s-note{font-size:.68rem;color:var(--muted);margin-top:4px}
+
+.list-wrap{flex:1;overflow-y:auto;padding:4px 0}
+.list-wrap::-webkit-scrollbar{width:3px}
+.list-wrap::-webkit-scrollbar-thumb{background:var(--g3);border-radius:3px}
+.ci{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;cursor:pointer;
+  transition:background .12s;border-left:3px solid transparent}
+.ci:hover{background:rgba(82,183,136,.08);border-left-color:var(--g4)}
+.ci.active{background:rgba(82,183,136,.14);border-left-color:var(--g4)}
+.ci-l{display:flex;align-items:center;gap:7px}
+.ci-name{font-size:.82rem;font-weight:500;color:#fff}
+.ci-sub{font-size:.65rem;color:var(--muted)}
+.ci-n{font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(82,183,136,.15);
+  color:var(--g4);border-radius:999px;padding:2px 8px;min-width:24px;text-align:center}
+.ci-n.has{background:rgba(82,183,136,.3);color:#fff}
+.ci.done .ci-name::after{content:" ✓";color:var(--g4);font-size:.68rem}
+
+.dv{display:none;flex-direction:column;flex:1;overflow:hidden}
+.dv.open{display:flex}
+.dback{display:flex;align-items:center;gap:5px;padding:9px 16px;font-size:.75rem;color:var(--g5);
+  cursor:pointer;border-bottom:1px solid rgba(82,183,136,.1);transition:color .12s}
+.dback:hover{color:var(--g4)}
+.dcinfo{padding:9px 16px;border-bottom:1px solid rgba(82,183,136,.1)}
+.dcname{font-family:'DM Serif Display',serif;font-size:.95rem;color:#fff}
+.dcstats{font-size:.68rem;color:var(--g5);margin-top:2px}
+.dl{flex:1;overflow-y:auto;padding:4px 0}
+.dl::-webkit-scrollbar{width:3px}
+.dl::-webkit-scrollbar-thumb{background:var(--g3);border-radius:3px}
+.di{display:flex;align-items:center;justify-content:space-between;padding:7px 16px;transition:background .1s}
+.di:hover{background:rgba(82,183,136,.06)}
+.di.rev{background:rgba(82,183,136,.08)}
+.di-name{font-size:.8rem;color:#fff;font-weight:500}
+.di-cnt{font-size:.65rem;color:var(--muted);margin-top:1px}
+.dbtn2{font-size:.62rem;padding:3px 8px;border-radius:999px;cursor:pointer;
+  border:1px solid rgba(82,183,136,.35);background:transparent;color:var(--g5);
+  transition:all .12s;white-space:nowrap;font-family:'Instrument Sans',sans-serif}
+.dbtn2:hover,.di.rev .dbtn2{background:var(--g4);color:var(--g1);border-color:var(--g4)}
+
+.mtt{position:fixed;pointer-events:none;background:rgba(13,40,24,.95);color:#fff;
+  border:1px solid rgba(82,183,136,.3);padding:7px 12px;border-radius:8px;font-size:.78rem;
+  opacity:0;transition:opacity .1s;z-index:2000;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.mtt.show{opacity:1}
+.mtt-n{font-weight:600}
+.mtt-s{color:var(--g5);font-size:.7rem;margin-top:1px}
+
+.loading{position:fixed;inset:0;background:var(--g1);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+.loading.done{opacity:0;pointer-events:none}
+.ll{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--g4);margin-bottom:10px}
+.lb{width:180px;height:3px;background:rgba(82,183,136,.2);border-radius:3px;overflow:hidden}
+.lbf{height:100%;background:var(--g4);border-radius:3px;animation:ld 2.5s ease forwards}
+@keyframes ld{0%{width:0}100%{width:100%}}
+.lt{font-size:.72rem;color:var(--g5);margin-top:8px;font-family:'DM Mono',monospace}
+
+.leaflet-control-zoom a{background:rgba(13,40,24,.9)!important;color:var(--g4)!important;border-color:rgba(82,183,136,.2)!important}
+.leaflet-control-zoom a:hover{background:rgba(82,183,136,.15)!important}
+</style>
+</head>
+<body>
+
+<div class="loading" id="ld">
+  <div class="ll">🦜 Beyond Mist Nets</div>
+  <div class="lb"><div class="lbf"></div></div>
+  <div class="lt" id="lt">Cargando mapas…</div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🦜</div>
+    <div>
+      <h1>Beyond Mist Nets</h1>
+      <p>Aves Habituadas Neotropicales · Base de datos colaborativa</p>
+    </div>
+  </div>
+  <div class="hstats">
+    <div class="hstat"><div class="n" id="h-rec">—</div><div class="l">Registros</div></div>
+    <div class="hstat"><div class="n" id="h-sp">—</div><div class="l">Especies</div></div>
+    <div class="hstat"><div class="n" id="h-co">—</div><div class="l">Países</div></div>
+    <div class="dbtn" id="dbtn" onclick="loadSheets()">
+      <div class="ddot" id="ddot"></div>
+      <span id="dlbl">Sincronizar datos</span>
+    </div>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div class="side">
+  <div id="cv" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="s-head"><h2>Neotrópico</h2><p>Haz clic en un país para ver sus departamentos</p></div>
+    <div class="s-prog">
+      <div class="prog-row"><span>Avance global</span><span id="gpct">0%</span></div>
+      <div class="pbar"><div class="pfill" id="gbar" style="width:0%"></div></div>
+      <div class="s-note" id="gnote">0 unidades revisadas</div>
+    </div>
+    <div class="list-wrap" id="cl"></div>
+  </div>
+
+  <div class="dv" id="dv">
+    <div class="dback" id="dback">← Todos los países</div>
+    <div class="dcinfo">
+      <div class="dcname" id="dcn">—</div>
+      <div class="dcstats" id="dcs">—</div>
+    </div>
+    <div class="s-prog">
+      <div class="prog-row"><span>Avance del país</span><span id="cpct">0%</span></div>
+      <div class="pbar"><div class="pfill" id="cbar" style="width:0%"></div></div>
+    </div>
+    <div class="dl" id="dl"></div>
+  </div>
+</div>
+
+<div class="mtt" id="tt"><div class="mtt-n" id="tn"></div><div class="mtt-s" id="ts"></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+// ── CONFIG — paste your Google Sheets ID here after converting ──────────────
+const SHEETS_ID = '1_nc0hFxBsC5jaPBTCpfwaU88ViTHsIRCzs8wztSMEbg';
+
+const FLAGS={"Colombia":"🇨🇴","México":"🇲🇽","Brasil":"🇧🇷","Perú":"🇵🇪","Ecuador":"🇪🇨","Venezuela":"🇻🇪","Bolivia":"🇧🇴","Argentina":"🇦🇷","Chile":"🇨🇱","Paraguay":"🇵🇾","Uruguay":"🇺🇾","Costa Rica":"🇨🇷","Panamá":"🇵🇦","Guatemala":"🇬🇹","Honduras":"🇭🇳","Nicaragua":"🇳🇮","Cuba":"🇨🇺","República Dominicana":"🇩🇴","Guyana":"🇬🇾","Surinam":"🇸🇷","Guyana Francesa":"🇬🇫","Jamaica":"🇯🇲","Trinidad y Tobago":"🇹🇹","El Salvador":"🇸🇻","Belice":"🇧🇿","Haití":"🇭🇹","Puerto Rico":"🇵🇷"};
+const CC={"Colombia":"co","México":"mx","Brasil":"br","Perú":"pe","Ecuador":"ec","Venezuela":"ve","Bolivia":"bo","Argentina":"ar","Chile":"cl","Paraguay":"py","Uruguay":"uy","Costa Rica":"cr","Panamá":"pa","Guatemala":"gt","Honduras":"hn","Nicaragua":"ni","Cuba":"cu","República Dominicana":"do","Guyana":"gy","Surinam":"sr","Guyana Francesa":"gf","Jamaica":"jm","Trinidad y Tobago":"tt","El Salvador":"sv","Belice":"bz","Haití":"ht","Puerto Rico":"pr"};
+
+let DB={records:[],byCountry:{},heatPts:[],species:0};
+let reviewed=JSON.parse(localStorage.getItem('bmn_rev')||'{}');
+let activeCountry=null, map=null, cLayer=null, aLayer=null, hLayer=null;
+let countryGeo=null, adminGeo={};
+
+// MAP INIT
+function initMap(){
+  map=L.map('map',{center:[-8,-65],zoom:4,zoomControl:true,attributionControl:false,minZoom:3,maxZoom:12});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(map);
+}
+
+// GEO DATA
+async function loadGeo(){
+  document.getElementById('lt').textContent='Cargando países…';
+  countryGeo=await(await fetch('data/neotropical_countries.geojson')).json();
+  document.getElementById('lt').textContent='Cargando departamentos…';
+  const a1=await(await fetch('data/admin1_neotropical.geojson')).json();
+  a1.features.forEach(f=>{
+    const cc=f.properties.country_code;
+    if(!adminGeo[cc])adminGeo[cc]=[];
+    adminGeo[cc].push(f);
+  });
+}
+
+// COLORS
+function heatColor(t){
+  if(t<0.2)return '#52b788';
+  if(t<0.5)return '#2d6a4f';
+  if(t<0.75)return '#e9c46a';
+  return '#e76f51';
+}
+
+// COUNTRY LAYER
+function renderCountries(){
+  if(cLayer)map.removeLayer(cLayer);
+  const mx=Math.max(1,...Object.values(DB.byCountry).map(v=>v.records||0));
+  cLayer=L.geoJSON(countryGeo,{
+    style:f=>{
+      const n=f.properties.name_es, c=DB.byCountry[n]?.records||0;
+      return{fillColor:c>0?heatColor(c/mx):'#1b4332',fillOpacity:c>0?.72:.35,color:'#52b788',weight:1,opacity:.6};
+    },
+    onEachFeature:(f,l)=>{
+      const n=f.properties.name_es;
+      l.on({mouseover:e=>showTT(e,n),mousemove:moveTT,mouseout:hideTT,click:()=>openCountry(n)});
+    }
+  }).addTo(map);
+}
+
+// HEAT LAYER
+function renderHeat(pts){
+  if(hLayer)map.removeLayer(hLayer);
+  if(!pts||!pts.length)return;
+  hLayer=L.heatLayer(pts,{radius:35,blur:25,maxZoom:10,gradient:{0.2:'#52b788',0.5:'#2d6a4f',0.75:'#e9c46a',1:'#e76f51'}}).addTo(map);
+}
+
+// OPEN COUNTRY
+function openCountry(name){
+  activeCountry=name;
+  document.getElementById('cv').style.display='none';
+  document.getElementById('dv').classList.add('open');
+  document.getElementById('dcn').textContent=(FLAGS[name]||'')+' '+name;
+
+  const feats=countryGeo.features.filter(f=>f.properties.name_es===name);
+  if(feats.length){map.fitBounds(L.geoJSON({type:'FeatureCollection',features:feats}).getBounds(),{padding:[30,30]});}
+
+  if(cLayer)map.removeLayer(cLayer);
+  if(hLayer)map.removeLayer(hLayer);
+  renderAdmin(name);
+  renderDeptList(name);
+}
+
+function renderAdmin(name){
+  if(aLayer)map.removeLayer(aLayer);
+  const code=CC[name], feats=adminGeo[code]||[];
+  const depts=DB.byCountry[name]?.depts||{};
+  const mx=Math.max(1,...Object.values(depts));
+  if(!reviewed[name])reviewed[name]={};
+
+  aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
+    style:f=>{
+      const dn=f.properties.name, c=depts[dn]||0, rev=reviewed[name][dn];
+      return{fillColor:c>0?heatColor(c/mx):rev?'#2d6a4f':'#1b4332',fillOpacity:c>0?.72:rev?.3:.2,color:'#52b788',weight:rev?1.5:.7,opacity:.7,dashArray:rev?null:'3,3'};
+    },
+    onEachFeature:(f,l)=>{
+      const dn=f.properties.name,c=depts[dn]||0;
+      l.on({mouseover:e=>showTT(e,dn,`${c} registro${c!==1?'s':''}`),mousemove:moveTT,mouseout:hideTT});
+    }
+  }).addTo(map);
+
+  // Dept heatmap
+  const pts=[];
+  feats.forEach(f=>{
+    const dn=f.properties.name,c=depts[dn]||0;
+    if(!c)return;
+    try{
+      let ring=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
+      const lat=ring.reduce((s,p)=>s+p[1],0)/ring.length;
+      const lng=ring.reduce((s,p)=>s+p[0],0)/ring.length;
+      for(let i=0;i<c;i++)pts.push([lat+Math.random()*.08-.04,lng+Math.random()*.08-.04,1]);
+    }catch(e){}
+  });
+  renderHeat(pts);
+}
+
+function renderDeptList(name){
+  const code=CC[name], feats=adminGeo[code]||[];
+  const depts=DB.byCountry[name]?.depts||{}, rec=DB.byCountry[name]?.records||0;
+  if(!reviewed[name])reviewed[name]={};
+  const revC=Object.values(reviewed[name]).filter(Boolean).length;
+  const tot=feats.length, pct=tot>0?Math.round(revC/tot*100):0;
+  document.getElementById('dcs').textContent=`${rec} registro${rec!==1?'s':''} · ${revC}/${tot} revisados`;
+  document.getElementById('cpct').textContent=pct+'%';
+  document.getElementById('cbar').style.width=pct+'%';
+
+  const list=document.getElementById('dl');
+  list.innerHTML='';
+  const sorted=[...feats].sort((a,b)=>(depts[b.properties.name]||0)-(depts[a.properties.name]||0));
+  sorted.forEach(f=>{
+    const dn=f.properties.name;if(!dn)return;
+    const c=depts[dn]||0,rev=!!reviewed[name][dn];
+    const d=document.createElement('div');
+    d.className='di'+(rev?' rev':'');
+    d.innerHTML=`<div><div class="di-name">${dn}</div><div class="di-cnt">${c} registro${c!==1?'s':''}</div></div><button class="dbtn2">${rev?'✓ Revisado':'Marcar revisado'}</button>`;
+    d.querySelector('.dbtn2').addEventListener('click',e=>{
+      e.stopPropagation();
+      reviewed[name][dn]=!reviewed[name][dn];
+      localStorage.setItem('bmn_rev',JSON.stringify(reviewed));
+      renderDeptList(name);
+      updateProgress();
+      renderAdmin(name);
+    });
+    list.appendChild(d);
+  });
+}
+
+document.getElementById('dback').addEventListener('click',()=>{
+  activeCountry=null;
+  document.getElementById('dv').classList.remove('open');
+  document.getElementById('cv').style.display='flex';
+  if(aLayer){map.removeLayer(aLayer);aLayer=null;}
+  renderCountries();
+  renderHeat(DB.heatPts);
+  map.setView([-8,-65],4,{animate:true});
+});
+
+function renderCountryList(){
+  const list=document.getElementById('cl');list.innerHTML='';
+  Object.keys(FLAGS).sort((a,b)=>(DB.byCountry[b]?.records||0)-(DB.byCountry[a]?.records||0)).forEach(name=>{
+    const rec=DB.byCountry[name]?.records||0, code=CC[name];
+    const tot=adminGeo[code]?.length||0;
+    const rev=reviewed[name]?Object.values(reviewed[name]).filter(Boolean).length:0;
+    const done=tot>0&&rev===tot;
+    const d=document.createElement('div');
+    d.className='ci'+(done?' done':'')+(activeCountry===name?' active':'');
+    d.innerHTML=`<div class="ci-l"><span style="font-size:1rem">${FLAGS[name]||''}</span><div><div class="ci-name">${name}</div><div class="ci-sub">${rev}/${tot} revisados</div></div></div><span class="ci-n ${rec?'has':''}">${rec}</span>`;
+    d.addEventListener('click',()=>openCountry(name));
+    list.appendChild(d);
+  });
+}
+
+function updateProgress(){
+  let tot=0,rev=0,rec=0,cos=new Set();
+  Object.keys(FLAGS).forEach(n=>{
+    const code=CC[n];tot+=adminGeo[code]?.length||0;
+    if(!reviewed[n])reviewed[n]={};
+    rev+=Object.values(reviewed[n]).filter(Boolean).length;
+    const r=DB.byCountry[n]?.records||0;rec+=r;if(r>0)cos.add(n);
+  });
+  const pct=tot>0?Math.round(rev/tot*100):0;
+  document.getElementById('gbar').style.width=pct+'%';
+  document.getElementById('gpct').textContent=pct+'%';
+  document.getElementById('gnote').textContent=`${rev} de ${tot} unidades revisadas`;
+  document.getElementById('h-rec').textContent=rec;
+  document.getElementById('h-co').textContent=cos.size;
+  renderCountryList();
+}
+
+// TOOLTIP
+const tt=document.getElementById('tt');
+function showTT(e,name,sub){
+  document.getElementById('tn').textContent=name;
+  const r=DB.byCountry[name]?.records||0;
+  document.getElementById('ts').textContent=sub||(r+' registro'+(r!==1?'s':''));
+  tt.classList.add('show');moveTT(e);
+}
+function moveTT(e){const x=e.originalEvent?.clientX||e.clientX,y=e.originalEvent?.clientY||e.clientY;tt.style.left=(x+14)+'px';tt.style.top=(y-38)+'px';}
+function hideTT(){tt.classList.remove('show');}
+
+// GOOGLE SHEETS
+async function loadSheets(){
+  // Sheets ID configured
+  document.getElementById('dlbl').textContent='Cargando…';
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=DATABASE`;
+    const text=await(await fetch(url)).text();
+    const json=JSON.parse(text.slice(47,-2));
+    // Column indices (0-based) — matches DATABASE sheet structure
+    const CI={id:0,country:10,dept:11,lat:14,lng:15,sp:6};
+    DB={records:[],byCountry:{},heatPts:[],species:0};
+    const species=new Set();
+    json.table.rows.forEach(row=>{
+      const g=i=>{const v=row.c?.[i];return v?(String(v.v||v.f||'')).trim():''};
+      const id=g(CI.id),country=g(CI.country),dept=g(CI.dept),lat=parseFloat(g(CI.lat)),lng=parseFloat(g(CI.lng)),sp=g(CI.sp);
+      if(!id||!country)return;
+      if(sp)species.add(sp);
+      if(!DB.byCountry[country])DB.byCountry[country]={records:0,depts:{}};
+      DB.byCountry[country].records++;
+      if(dept)DB.byCountry[country].depts[dept]=(DB.byCountry[country].depts[dept]||0)+1;
+      if(!isNaN(lat)&&!isNaN(lng))DB.heatPts.push([lat,lng,1]);
+    });
+    DB.species=species.size;
+    document.getElementById('h-sp').textContent=DB.species;
+    document.getElementById('dlbl').textContent='✓ Actualizado';
+    document.getElementById('ddot').style.background='#52b788';
+    updateProgress();renderCountries();renderHeat(DB.heatPts);
+  }catch(e){document.getElementById('dlbl').textContent='⚠ Error';console.error(e);}
+}
+
+// FALLBACK
+function fallback(){
+  DB.byCountry={"Colombia":{records:3,depts:{"Antioquia":1,"Valle del Cauca":2}}};
+  DB.heatPts=[[6.0521,-75.5012,1],[3.5301,-76.6125,1],[3.5301,-76.6125,1]];
+  document.getElementById('h-sp').textContent='3';
+}
+
+// MAIN
+async function main(){
+  initMap();
+  await loadGeo();
+  fallback();
+  renderCountries();
+  renderHeat(DB.heatPts);
+  updateProgress();
+  document.getElementById('ld').classList.add('done');
+  setTimeout(()=>document.getElementById('ld').style.display='none',600);
+}
+main().then(() => loadSheets());
+</script>
+</body>
+</html>
