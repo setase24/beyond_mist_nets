@@ -259,36 +259,31 @@ function renderAdmin(name){
   if(aLayer){map.removeLayer(aLayer);aLayer=null;}
   if(hLayer){map.removeLayer(hLayer);hLayer=null;}
   const code=CC[name];
-  
-}
-  
   const feats=adminGeo[code]||[];
-  if(!feats.length){console.warn('No features for',code);return;}
-  const depts=DB.byCountry[name]?.depts||{};
+  if(!feats.length){console.warn('No feats for',code);return;}
+  const depts=(DB.byCountry[name]||{}).depts||{};
   const vals=Object.values(depts);
-  const mx=vals.length?Math.max(...vals):1;
+  const mx=vals.length?Math.max.apply(null,vals):1;
   if(!reviewed[name])reviewed[name]={};
-
-  function getColor(c){
+  function gc(c){
     if(!c)return '#1a2e1f';
-    const t=c/mx;
+    var t=c/mx;
     if(t<0.25)return '#52b788';
     if(t<0.5)return '#2d6a4f';
     if(t<0.75)return '#e9c46a';
     return '#e76f51';
   }
-
   aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
     style:function(f){
-      const c=depts[f.properties.name]||0;
-      return{fillColor:getColor(c),fillOpacity:c>0?0.75:0.3,color:'#52b788',weight:c>0?1.5:0.5,opacity:0.8};
+      var c=(depts[f.properties.name]||0);
+      return{fillColor:gc(c),fillOpacity:c?0.75:0.3,color:'#52b788',weight:c?1.5:0.5,opacity:0.8};
     },
     onEachFeature:function(f,l){
-      const dn=f.properties.name,c=depts[dn]||0;
+      var dn=f.properties.name,c=(depts[dn]||0);
       l.on({mouseover:function(e){showTT(e,dn,c+' registro'+(c!==1?'s':''));},mousemove:moveTT,mouseout:hideTT});
     }
   }).addTo(map);
-  console.log('renderAdmin done: '+feats.length+' feats, aLayer='+!!aLayer);
+  console.log('renderAdmin OK: '+feats.length+' feats aLayer='+!!aLayer);
 }
 
 function renderDeptList(name){
