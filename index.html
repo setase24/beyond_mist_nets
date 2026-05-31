@@ -247,15 +247,22 @@ async function openCountry(name){
   if(hLayer)map.removeLayer(hLayer);
   
   const code=CC[name];
-  await loadAdminGeo(code);
   renderAdmin(name);
   renderDeptList(name);
 }
 
-function renderAdmin(name){
+async function renderAdmin(name){
   if(aLayer){map.removeLayer(aLayer);aLayer=null;}
   if(hLayer){map.removeLayer(hLayer);hLayer=null;}
   const code=CC[name];
+  
+  // Load admin geo if not cached yet
+  if(!adminGeo[code] || !adminGeo[code].length){
+    const r=await fetch('data/admin1/'+code+'.geojson');
+    const d=await r.json();
+    adminGeo[code]=d.features;
+  }
+  
   const feats=adminGeo[code]||[];
   if(!feats.length){console.warn('No features for',code);return;}
   const depts=DB.byCountry[name]?.depts||{};
@@ -272,33 +279,17 @@ function renderAdmin(name){
     return '#e76f51';
   }
 
-  try{
-    aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
-      style:function(f){
-        const dn=f.properties.name;
-        const c=depts[dn]||0;
-        return{
-          fillColor:getColor(c),
-          fillOpacity:c>0?0.75:0.3,
-          color:'#52b788',
-          weight:c>0?1.5:0.5,
-          opacity:0.8
-        };
-      },
-      onEachFeature:function(f,l){
-        const dn=f.properties.name;
-        const c=depts[dn]||0;
-        l.on({
-          mouseover:function(e){showTT(e,dn,c+' registro'+(c!==1?'s':''));},
-          mousemove:moveTT,
-          mouseout:hideTT
-        });
-      }
-    }).addTo(map);
-    console.log('renderAdmin OK: '+feats.length+' features for '+code);
-  }catch(err){
-    console.error('renderAdmin error:',err);
-  }
+  aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
+    style:function(f){
+      const c=depts[f.properties.name]||0;
+      return{fillColor:getColor(c),fillOpacity:c>0?0.75:0.3,color:'#52b788',weight:c>0?1.5:0.5,opacity:0.8};
+    },
+    onEachFeature:function(f,l){
+      const dn=f.properties.name,c=depts[dn]||0;
+      l.on({mouseover:function(e){showTT(e,dn,c+' registro'+(c!==1?'s':''));},mousemove:moveTT,mouseout:hideTT});
+    }
+  }).addTo(map);
+  console.log('renderAdmin done: '+feats.length+' feats, aLayer='+!!aLayer);
 }
 
 function renderDeptList(name){
