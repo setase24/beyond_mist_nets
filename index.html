@@ -178,15 +178,24 @@ function initMap(){
 
 // GEO DATA
 async function loadGeo(){
-  document.getElementById('lt').textContent='Cargando países…';
-  countryGeo=await(await fetch('data/neotropical_countries.geojson')).json();
-  document.getElementById('lt').textContent='Cargando departamentos…';
-  const a1=await(await fetch('data/admin1_neotropical.geojson')).json();
-  a1.features.forEach(f=>{
-    const cc=f.properties.country_code;
-    if(!adminGeo[cc])adminGeo[cc]=[];
-    adminGeo[cc].push(f);
-  });
+  try{
+    const base=window.location.pathname.replace(/\/[^\/]*$/,'')||'';
+    const ltEl=document.getElementById('lt');
+    if(ltEl)ltEl.textContent='Cargando países…';
+    const r1=await fetch(base+'/data/neotropical_countries.geojson');
+    countryGeo=await r1.json();
+    if(ltEl)ltEl.textContent='Cargando departamentos…';
+    const r2=await fetch(base+'/data/admin1_neotropical.geojson');
+    const a1=await r2.json();
+    a1.features.forEach(f=>{
+      const cc=f.properties.country_code;
+      if(!adminGeo[cc])adminGeo[cc]=[];
+      adminGeo[cc].push(f);
+    });
+    console.log('GeoJSON loaded: countries='+countryGeo.features.length+' admin1 keys='+Object.keys(adminGeo).length);
+  }catch(err){
+    console.error('loadGeo error:',err);
+  }
 }
 
 // COLORS
