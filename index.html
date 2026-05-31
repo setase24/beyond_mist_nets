@@ -253,60 +253,52 @@ async function openCountry(name){
 }
 
 function renderAdmin(name){
-  if(aLayer)map.removeLayer(aLayer);
-  const code=CC[name], feats=adminGeo[code]||[];
+  if(aLayer){map.removeLayer(aLayer);aLayer=null;}
+  if(hLayer){map.removeLayer(hLayer);hLayer=null;}
+  const code=CC[name];
+  const feats=adminGeo[code]||[];
+  if(!feats.length){console.warn('No features for',code);return;}
   const depts=DB.byCountry[name]?.depts||{};
-  const vals=Object.values(depts).filter(v=>v>0);
-  const mx=vals.length>0?Math.max(...vals):1;
+  const vals=Object.values(depts);
+  const mx=vals.length?Math.max(...vals):1;
   if(!reviewed[name])reviewed[name]={};
 
-  aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
-    style:f=>{
-      const dn=f.properties.name, c=depts[dn]||0, rev=reviewed[name][dn];
-      // Heatmap: intensity scales from light mint to deep rust based on record count
-      let fillColor, fillOpacity;
-      if(c>0){
-        const t=c/mx;
-        if(t<=0.25)      fillColor='#52b788'; // light green
-        else if(t<=0.5)  fillColor='#2d6a4f'; // mid green
-        else if(t<=0.75) fillColor='#e9c46a'; // gold
-        else             fillColor='#e76f51'; // rust/orange
-        fillOpacity=0.55+t*0.35; // 0.55 to 0.90
-      } else if(rev){
-        fillColor='#2d6a4f'; fillOpacity=0.25;
-      } else {
-        fillColor='#1a1a2e'; fillOpacity=0.45;
-      }
-      return{fillColor, fillOpacity, color:'#52b788', weight:c>0?1.5:0.5, opacity:0.7, dashArray:rev&&c===0?'3,3':null};
-    },
-    onEachFeature:(f,l)=>{
-      const dn=f.properties.name,c=depts[dn]||0;
-      l.on({
-        mouseover:e=>showTT(e,dn,`${c} registro${c!==1?'s':''}`),
-        mousemove:moveTT,
-        mouseout:hideTT,
-        click:()=>{
-          // Highlight clicked dept in sidebar
-          const items=document.querySelectorAll('.di');
-          items.forEach(el=>{if(el.querySelector('.di-name')?.textContent===dn)el.scrollIntoView({behavior:'smooth',block:'center'});});
-        }
-      });
-    }
-  }).addTo(map);
+  function getColor(c){
+    if(!c)return '#1a2e1f';
+    const t=c/mx;
+    if(t<0.25)return '#52b788';
+    if(t<0.5)return '#2d6a4f';
+    if(t<0.75)return '#e9c46a';
+    return '#e76f51';
+  }
 
-  // Dept heatmap
-  const pts=[];
-  feats.forEach(f=>{
-    const dn=f.properties.name,c=depts[dn]||0;
-    if(!c)return;
-    try{
-      let ring=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
-      const lat=ring.reduce((s,p)=>s+p[1],0)/ring.length;
-      const lng=ring.reduce((s,p)=>s+p[0],0)/ring.length;
-      for(let i=0;i<c;i++)pts.push([lat+Math.random()*.08-.04,lng+Math.random()*.08-.04,1]);
-    }catch(e){}
-  });
-  renderHeat(pts);
+  try{
+    aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
+      style:function(f){
+        const dn=f.properties.name;
+        const c=depts[dn]||0;
+        return{
+          fillColor:getColor(c),
+          fillOpacity:c>0?0.75:0.3,
+          color:'#52b788',
+          weight:c>0?1.5:0.5,
+          opacity:0.8
+        };
+      },
+      onEachFeature:function(f,l){
+        const dn=f.properties.name;
+        const c=depts[dn]||0;
+        l.on({
+          mouseover:function(e){showTT(e,dn,c+' registro'+(c!==1?'s':''));},
+          mousemove:moveTT,
+          mouseout:hideTT
+        });
+      }
+    }).addTo(map);
+    console.log('renderAdmin OK: '+feats.length+' features for '+code);
+  }catch(err){
+    console.error('renderAdmin error:',err);
+  }
 }
 
 function renderDeptList(name){
