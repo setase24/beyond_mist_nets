@@ -180,18 +180,22 @@ function initMap(){
 async function loadGeo(){
   const ltEl=document.getElementById('lt');
   if(ltEl)ltEl.textContent='Cargando mapa…';
+  
+  // Load countries
   const r1=await fetch('data/neotropical_countries.geojson');
   countryGeo=await r1.json();
-  console.log('Countries loaded: '+countryGeo.features.length);
+  
+  if(ltEl)ltEl.textContent='Cargando departamentos…';
+  
+  // Load all admin1 files in parallel
+  const codes=["ar", "bo", "br", "bz", "cl", "co", "cr", "cu", "do", "ec", "gt", "gy", "hn", "ht", "jm", "mx", "ni", "pa", "pe", "pr", "py", "sr", "sv", "tt", "uy", "ve"];
+  const results=await Promise.all(codes.map(cc=>
+    fetch('data/admin1/'+cc+'.geojson').then(r=>r.json()).then(d=>[cc,d.features])
+  ));
+  results.forEach(([cc,feats])=>{ adminGeo[cc]=feats; });
+  console.log('All geo loaded. Countries:'+countryGeo.features.length+' Admin zones:'+Object.keys(adminGeo).length);
 }
 
-async function loadAdminGeo(code){
-  if(adminGeo[code]) return; // already cached
-  const r=await fetch('data/admin1/'+code+'.geojson');
-  const data=await r.json();
-  adminGeo[code]=data.features;
-  console.log('Loaded admin1 for '+code+': '+data.features.length+' features');
-}
 
 // COLORS
 function heatColor(t){
@@ -234,7 +238,7 @@ function renderHeat(pts){
 }
 
 // OPEN COUNTRY
-async function openCountry(name){
+function openCountry(name){
   activeCountry=name;
   document.getElementById('cv').style.display='none';
   document.getElementById('dv').classList.add('open');
@@ -251,17 +255,12 @@ async function openCountry(name){
   renderDeptList(name);
 }
 
-async function renderAdmin(name){
+function renderAdmin(name){
   if(aLayer){map.removeLayer(aLayer);aLayer=null;}
   if(hLayer){map.removeLayer(hLayer);hLayer=null;}
   const code=CC[name];
   
-  // Load admin geo if not cached yet
-  if(!adminGeo[code] || !adminGeo[code].length){
-    const r=await fetch('data/admin1/'+code+'.geojson');
-    const d=await r.json();
-    adminGeo[code]=d.features;
-  }
+}
   
   const feats=adminGeo[code]||[];
   if(!feats.length){console.warn('No features for',code);return;}
