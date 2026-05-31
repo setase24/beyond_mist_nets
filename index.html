@@ -179,18 +179,18 @@ function initMap(){
 // GEO DATA
 async function loadGeo(){
   const ltEl=document.getElementById('lt');
-  if(ltEl)ltEl.textContent='Cargando países…';
+  if(ltEl)ltEl.textContent='Cargando mapa…';
   const r1=await fetch('data/neotropical_countries.geojson');
   countryGeo=await r1.json();
-  if(ltEl)ltEl.textContent='Cargando departamentos…';
-  const r2=await fetch('data/admin1_neotropical.geojson');
-  const a1=await r2.json();
-  a1.features.forEach(f=>{
-    const cc=f.properties.country_code;
-    if(!adminGeo[cc])adminGeo[cc]=[];
-    adminGeo[cc].push(f);
-  });
-  console.log('Loaded: '+countryGeo.features.length+' countries, '+Object.keys(adminGeo).length+' admin zones');
+  console.log('Countries loaded: '+countryGeo.features.length);
+}
+
+async function loadAdminGeo(code){
+  if(adminGeo[code]) return; // already cached
+  const r=await fetch('data/admin1/'+code+'.geojson');
+  const data=await r.json();
+  adminGeo[code]=data.features;
+  console.log('Loaded admin1 for '+code+': '+data.features.length+' features');
 }
 
 // COLORS
@@ -234,7 +234,7 @@ function renderHeat(pts){
 }
 
 // OPEN COUNTRY
-function openCountry(name){
+async function openCountry(name){
   activeCountry=name;
   document.getElementById('cv').style.display='none';
   document.getElementById('dv').classList.add('open');
@@ -245,6 +245,9 @@ function openCountry(name){
 
   if(cLayer)map.removeLayer(cLayer);
   if(hLayer)map.removeLayer(hLayer);
+  
+  const code=CC[name];
+  await loadAdminGeo(code);
   renderAdmin(name);
   renderDeptList(name);
 }
