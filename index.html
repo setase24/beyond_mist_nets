@@ -381,7 +381,7 @@ async function loadSheets(){
     const CI={id:0,sp:6,country:10,dept:11,lat:14,lng:15};
     DB={records:[],byCountry:{},heatPts:[],species:0};
     const species=new Set();
-    json.table.rows.forEach(row=>{
+    json.table.rows.slice(2).forEach(row=>{  // skip row0=hints, row1=example
       const g=i=>{const v=row.c?.[i];return v?(String(v.v??v.f??'')).trim():''};
       const id=g(CI.id),country=g(CI.country),dept=g(CI.dept),lat=parseFloat(g(CI.lat)),lng=parseFloat(g(CI.lng)),sp=g(CI.sp);
       if(!id||!country)return;
