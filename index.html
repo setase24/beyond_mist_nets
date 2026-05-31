@@ -160,7 +160,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(13,40,24
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
 // ── CONFIG — paste your Google Sheets ID here after converting ──────────────
-const SHEETS_ID = 'YOUR_GOOGLE_SHEETS_ID';
+const SHEETS_ID = '1_nc0hFxBsC5jaPBTCpfwaU88ViTHsIRCzs8wztSMEbg';
 
 const FLAGS={"Colombia":"🇨🇴","México":"🇲🇽","Brasil":"🇧🇷","Perú":"🇵🇪","Ecuador":"🇪🇨","Venezuela":"🇻🇪","Bolivia":"🇧🇴","Argentina":"🇦🇷","Chile":"🇨🇱","Paraguay":"🇵🇾","Uruguay":"🇺🇾","Costa Rica":"🇨🇷","Panamá":"🇵🇦","Guatemala":"🇬🇹","Honduras":"🇭🇳","Nicaragua":"🇳🇮","Cuba":"🇨🇺","República Dominicana":"🇩🇴","Guyana":"🇬🇾","Surinam":"🇸🇷","Guyana Francesa":"🇬🇫","Jamaica":"🇯🇲","Trinidad y Tobago":"🇹🇹","El Salvador":"🇸🇻","Belice":"🇧🇿","Haití":"🇭🇹","Puerto Rico":"🇵🇷"};
 const CC={"Colombia":"co","México":"mx","Brasil":"br","Perú":"pe","Ecuador":"ec","Venezuela":"ve","Bolivia":"bo","Argentina":"ar","Chile":"cl","Paraguay":"py","Uruguay":"uy","Costa Rica":"cr","Panamá":"pa","Guatemala":"gt","Honduras":"hn","Nicaragua":"ni","Cuba":"cu","República Dominicana":"do","Guyana":"gy","Surinam":"sr","Guyana Francesa":"gf","Jamaica":"jm","Trinidad y Tobago":"tt","El Salvador":"sv","Belice":"bz","Haití":"ht","Puerto Rico":"pr"};
@@ -401,8 +401,8 @@ async function loadSheets(){
 
 // FALLBACK
 function fallback(){
-  DB.byCountry={"Colombia":{records:3,depts:{"Antioquia":1,"Valle del Cauca":2}}};
-  DB.heatPts=[[6.0521,-75.5012,1],[3.5301,-76.6125,1],[3.5301,-76.6125,1]];
+  DB.byCountry={"Colombia":{records:3,depts:{"Valle del Cauca":3}}};
+  DB.heatPts=[[3.5301,-76.6125,1],[3.5301,-76.6125,1],[3.5301,-76.6125,1]];
   document.getElementById('h-sp').textContent='3';
 }
 
@@ -417,7 +417,7 @@ async function main(){
   document.getElementById('ld').classList.add('done');
   setTimeout(()=>document.getElementById('ld').style.display='none',600);
 }
-main();
+main().then(()=>loadSheets());
 </script>
 </body>
 </html>
