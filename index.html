@@ -122,7 +122,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(13,40,24
     <div class="hstat"><div class="n" id="h-co">—</div><div class="l">Países</div></div>
     <div class="dbtn" id="dbtn" onclick="loadSheets()">
       <div class="ddot" id="ddot"></div>
-      <span id="dlbl">Sincronizar datos</span>
+      <span id="dlbl">Conectar Google Sheets</span>
     </div>
   </div>
 </header>
@@ -160,7 +160,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(13,40,24
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
 // ── CONFIG — paste your Google Sheets ID here after converting ──────────────
-const SHEETS_ID = '1_nc0hFxBsC5jaPBTCpfwaU88ViTHsIRCzs8wztSMEbg';
+const SHEETS_ID = 'YOUR_GOOGLE_SHEETS_ID';
 
 const FLAGS={"Colombia":"🇨🇴","México":"🇲🇽","Brasil":"🇧🇷","Perú":"🇵🇪","Ecuador":"🇪🇨","Venezuela":"🇻🇪","Bolivia":"🇧🇴","Argentina":"🇦🇷","Chile":"🇨🇱","Paraguay":"🇵🇾","Uruguay":"🇺🇾","Costa Rica":"🇨🇷","Panamá":"🇵🇦","Guatemala":"🇬🇹","Honduras":"🇭🇳","Nicaragua":"🇳🇮","Cuba":"🇨🇺","República Dominicana":"🇩🇴","Guyana":"🇬🇾","Surinam":"🇸🇷","Guyana Francesa":"🇬🇫","Jamaica":"🇯🇲","Trinidad y Tobago":"🇹🇹","El Salvador":"🇸🇻","Belice":"🇧🇿","Haití":"🇭🇹","Puerto Rico":"🇵🇷"};
 const CC={"Colombia":"co","México":"mx","Brasil":"br","Perú":"pe","Ecuador":"ec","Venezuela":"ve","Bolivia":"bo","Argentina":"ar","Chile":"cl","Paraguay":"py","Uruguay":"uy","Costa Rica":"cr","Panamá":"pa","Guatemala":"gt","Honduras":"hn","Nicaragua":"ni","Cuba":"cu","República Dominicana":"do","Guyana":"gy","Surinam":"sr","Guyana Francesa":"gf","Jamaica":"jm","Trinidad y Tobago":"tt","El Salvador":"sv","Belice":"bz","Haití":"ht","Puerto Rico":"pr"};
@@ -204,7 +204,16 @@ function renderCountries(){
   cLayer=L.geoJSON(countryGeo,{
     style:f=>{
       const n=f.properties.name_es, c=DB.byCountry[n]?.records||0;
-      return{fillColor:c>0?heatColor(c/mx):'#1b4332',fillOpacity:c>0?.72:.35,color:'#52b788',weight:1,opacity:.6};
+      const t=c>0?c/mx:0;
+        let fc='#1b4332', fo=0.3;
+        if(c>0){
+          if(t<=0.25)fc='#52b788';
+          else if(t<=0.5)fc='#2d6a4f';
+          else if(t<=0.75)fc='#e9c46a';
+          else fc='#e76f51';
+          fo=0.6+t*0.3;
+        }
+        return{fillColor:fc,fillOpacity:fo,color:'#52b788',weight:c>0?1.5:0.8,opacity:0.7};
     },
     onEachFeature:(f,l)=>{
       const n=f.properties.name_es;
@@ -240,17 +249,41 @@ function renderAdmin(name){
   if(aLayer)map.removeLayer(aLayer);
   const code=CC[name], feats=adminGeo[code]||[];
   const depts=DB.byCountry[name]?.depts||{};
-  const mx=Math.max(1,...Object.values(depts));
+  const vals=Object.values(depts).filter(v=>v>0);
+  const mx=vals.length>0?Math.max(...vals):1;
   if(!reviewed[name])reviewed[name]={};
 
   aLayer=L.geoJSON({type:'FeatureCollection',features:feats},{
     style:f=>{
       const dn=f.properties.name, c=depts[dn]||0, rev=reviewed[name][dn];
-      return{fillColor:c>0?heatColor(c/mx):rev?'#2d6a4f':'#1b4332',fillOpacity:c>0?.72:rev?.3:.2,color:'#52b788',weight:rev?1.5:.7,opacity:.7,dashArray:rev?null:'3,3'};
+      // Heatmap: intensity scales from light mint to deep rust based on record count
+      let fillColor, fillOpacity;
+      if(c>0){
+        const t=c/mx;
+        if(t<=0.25)      fillColor='#52b788'; // light green
+        else if(t<=0.5)  fillColor='#2d6a4f'; // mid green
+        else if(t<=0.75) fillColor='#e9c46a'; // gold
+        else             fillColor='#e76f51'; // rust/orange
+        fillOpacity=0.55+t*0.35; // 0.55 to 0.90
+      } else if(rev){
+        fillColor='#2d6a4f'; fillOpacity=0.25;
+      } else {
+        fillColor='#1a1a2e'; fillOpacity=0.45;
+      }
+      return{fillColor, fillOpacity, color:'#52b788', weight:c>0?1.5:0.5, opacity:0.7, dashArray:rev&&c===0?'3,3':null};
     },
     onEachFeature:(f,l)=>{
       const dn=f.properties.name,c=depts[dn]||0;
-      l.on({mouseover:e=>showTT(e,dn,`${c} registro${c!==1?'s':''}`),mousemove:moveTT,mouseout:hideTT});
+      l.on({
+        mouseover:e=>showTT(e,dn,`${c} registro${c!==1?'s':''}`),
+        mousemove:moveTT,
+        mouseout:hideTT,
+        click:()=>{
+          // Highlight clicked dept in sidebar
+          const items=document.querySelectorAll('.di');
+          items.forEach(el=>{if(el.querySelector('.di-name')?.textContent===dn)el.scrollIntoView({behavior:'smooth',block:'center'});});
+        }
+      });
     }
   }).addTo(map);
 
@@ -355,18 +388,17 @@ function hideTT(){tt.classList.remove('show');}
 
 // GOOGLE SHEETS
 async function loadSheets(){
-  // Sheets ID configured
+  if(SHEETS_ID==='YOUR_GOOGLE_SHEETS_ID'){alert('Configura tu SHEETS_ID en index.html');return;}
   document.getElementById('dlbl').textContent='Cargando…';
   try{
     const url=`https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=DATABASE`;
     const text=await(await fetch(url)).text();
     const json=JSON.parse(text.slice(47,-2));
-    // Column indices (0-based) — matches DATABASE sheet structure
-    const CI={id:0,country:10,dept:11,lat:14,lng:15,sp:6};
+    const CI={id:0,sp:6,country:10,dept:11,lat:14,lng:15};
     DB={records:[],byCountry:{},heatPts:[],species:0};
     const species=new Set();
     json.table.rows.forEach(row=>{
-      const g=i=>{const v=row.c?.[i];return v?(String(v.v||v.f||'')).trim():''};
+      const g=i=>{const v=row.c?.[i];return v?(String(v.v??v.f??'')).trim():''};
       const id=g(CI.id),country=g(CI.country),dept=g(CI.dept),lat=parseFloat(g(CI.lat)),lng=parseFloat(g(CI.lng)),sp=g(CI.sp);
       if(!id||!country)return;
       if(sp)species.add(sp);
@@ -401,7 +433,7 @@ async function main(){
   document.getElementById('ld').classList.add('done');
   setTimeout(()=>document.getElementById('ld').style.display='none',600);
 }
-main().then(() => loadSheets());
+main();
 </script>
 </body>
 </html>
